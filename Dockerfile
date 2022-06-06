@@ -1,14 +1,20 @@
-FROM alpine:latest
-LABEL maintainer "Michael Henke <433270+aphex3k@users.noreply.github.com>"
-RUN apk add --no-cache --update wireguard-tools openssh
-# The host keys get regenrated at start of the container
-RUN rm -rf /etc/ssh/ssh_host_rsa_key /etc/ssh/ssh_host_dsa_key
-RUN mkdir /etc/wireguard/util
-COPY wg-genkey.sh /etc/wireguard/util/wg-genkey.sh
-COPY wg-startup.sh /etc/wireguard/util/wg-startup.sh
-RUN chmod 700 /etc/wireguard/util/wg-startup.sh
-RUN mkdir /etc/wireguard/config
-VOLUME /etc/wireguard/config
+ARG ALPINE=alpine:latest
+FROM ${ALPINE} as alpine
+ARG ARCH
+
+RUN apk add -U --no-cache bash bash-completion curl
+
+# Kubectl CLI
+ARG KUBECTL_VERSION=v1.24.1
+
+RUN curl -LO https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl && \
+    chmod +x ./kubectl && \
+    mv ./kubectl /usr/local/bin/kubectl 
+
+RUN apk add --no-cache wireguard-tools 
+
+COPY wg-startup.sh /wg-startup.sh
+RUN chmod 700 /wg-startup.sh
+
 EXPOSE 51820/udp
-EXPOSE 22
-ENTRYPOINT [ "/etc/wireguard/util/wg-startup.sh" ]
+ENTRYPOINT [ "/wg-startup.sh" ]
